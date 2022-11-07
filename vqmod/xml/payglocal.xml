@@ -1,21 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <modification>
     <id>PayGlocal Payment Extension</id>
-    <version>1.0.2</version>
-    <vqmver>PayGlocalOC1.5.x</vqmver>
+    <version>1.0.0</version>
+    <vqmver>2.x</vqmver>
+    <code>Support Opencart TPL version</code>
     <author>Meetanshi | https://meetanshi.com</author>
     <file name="admin/controller/sale/order.php">
         <operation>
-            <search position="after"><![CDATA[$this->data['shipping_country'] = $order_info['shipping_country'];]]></search>
-            <add><![CDATA[
-                $this->data['payglocal_refund'] = $this->config->get('payglocal_refund');
-            ]]></add>
+            <search position="before"><![CDATA[$this->response->setOutput($this->load->view('sale/order_info', $data));]]></search>
+            <add><![CDATA[$data['payglocal_refund'] = $this->config->get('payglocal_refund');]]></add>
         </operation>
     </file>
-    <file name="admin/view/template/sale/order_info.tpl">
+    <file name="admin/view/template/sale/order_info.tpl" path="admin/view/template/sale/order_info.tpl">
         <operation>
             <search position="before"><![CDATA[<?php echo $footer; ?>]]></search>
-            <add><![CDATA[
+            <add position="before"><![CDATA[
                 <script type="text/javascript"><!--
                 function refund(){
                     var returnValue = false;
@@ -56,12 +55,12 @@
             ]]></add>
         </operation>
         <operation>
-            <search position="after"><![CDATA[$('#button-history').live('click', function() {]]></search>
-            <add><![CDATA[
+            <search position="after"><![CDATA[$('#button-history').on('click', function() {]]></search>
+            <add position="after"><![CDATA[
                 <?php if ($payglocal_refund == 1){?>
                     var status_id = $('select[name="order_status_id"]').val();
                     if(status_id == 11){
-                        if (confirm('<?php echo $text_confirm_refund;?>')) {
+                        if (confirm('Are you sure?')) {
                             var retval = refund();
                             if(!retval){
                                 return false;
@@ -74,19 +73,19 @@
             ]]></add>
         </operation>
     </file>
-    <file name="system/library/session.php">
+    <file name="system/library/session.php" path="system/library/session.php">
 		<operation>
 			<search position="after"><![CDATA[session_start();]]></search>
-			<add><![CDATA[
+			<add position="after"><![CDATA[
 				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
-						setcookie(session_name(), session_id(), [
-							'expires'  => ini_get('session.cookie_lifetime'),
-							'path'     => ini_get('session.cookie_path'),
-							'domain'   => ini_get('session.cookie_domain'),
-							'secure'   => true,
-							'httponly' => ini_get('session.cookie_httponly'),
-							'samesite' => 'None',
-						]);
+                    setcookie(session_name(), session_id(), [
+                        'expires'  => ini_get('session.cookie_lifetime'),
+                        'path'     => ini_get('session.cookie_path'),
+                        'domain'   => ini_get('session.cookie_domain'),
+                        'secure'   => true,
+                        'httponly' => ini_get('session.cookie_httponly'),
+                        'samesite' => 'None',
+                    ]);
 				} else {
 					// php <7.3 didn't support samesite attribute so we hack it into the path string
 					setcookie(session_name(), session_id(), ini_get('session.cookie_lifetime'), ini_get('session.cookie_path').';SameSite=None', ini_get('session.cookie_domain'), true, ini_get('session.cookie_httponly'));
