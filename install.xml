@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <code>payglocal_payment</code>
+    <name>PayGlocal Payment Gateway</name>
+    <version>1.0</version>
+    <author>Versioning Solutions</author>
+    <link>mailto:sales@versioningsolutions.com</link>
+	
+    <file path="admin/controller/sale/order.php">
+   		<operation>
+   			<search><![CDATA[$data['accept_language'] = $order_info['accept_language'];]]></search>
+			<add position="after"><![CDATA[$data['payment_payglocal_refund'] = $this->config->get('payment_payglocal_refund');]]></add>
+		</operation>
+   	</file>
+
+   <file path="admin/view/template/sale/order_info.twig">
+   		<operation>
+   			<search><![CDATA[{{ footer }}]]></search>
+			<add position="before"><![CDATA[
+<script type="text/javascript">
+function refund(){
+    var returnValue = false;
+    $.ajax({
+        async: false,
+        type: 'POST',
+        dataType: 'json',
+        data: {'order_id': '{{ order_id }}'},
+        url: 'index.php?route=payment/payglocal/refund&&user_token={{ user_token }}&order_id={{ order_id }}',
+        success: function (json) {
+            console.log(json);
+            $('.success, .warning').remove();
+            var message = '';
+            if (json['gid']) {
+                message += 'GID: ' + json['gid'] + "\n";
+            }
+
+            if (json['status']) {
+                message += 'Status: ' + json['status'] + "\n";
+            }
+
+            if (json['status'] == 'SENT_FOR_REFUND') {
+                $('.box').before('<div class="success" style="display: none;">' + json['message'] + '</div>');
+                $('.success').fadeIn('slow');
+                $('textarea[name=\'comment\']').val(message);
+                returnValue = true;
+            } 
+
+            if(json['status'] == 'REQUEST_ERROR'){
+                $('.box').before('<div class="warning" style="display: none;">' + json['message'] + '</div>');
+                $('.warning').fadeIn('slow');
+            }
+        }
+    });
+    return returnValue;
+}
+</script>]]></add>
+		</operation>
+        <operation>
+            <search><![CDATA[$('#button-history').on('click', function() {]]></search>
+            <add position="after"><![CDATA[
+{% if payment_payglocal_refund == 1 %}
+    var status_id = $('select[name="order_status_id"]').val();
+    if(status_id == 11){
+        if (confirm('Are you sure?')) {
+            var retval = refund();
+            if(!retval){
+                return false;
+            }
+        }else{
+            return false;
+        }
+    }
+{% endif %}
+            ]]></add>
+        </operation>
+    </file>
+	
+    <file path="system/library/session.php">
+		<operation>
+			<search><![CDATA[session_start();]]></search>
+			<add position="after"><![CDATA[
+				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
+                    setcookie(session_name(), session_id(), [
+                        'expires'  => ini_get('session.cookie_lifetime'),
+                        'path'     => ini_get('session.cookie_path'),
+                        'domain'   => ini_get('session.cookie_domain'),
+                        'secure'   => true,
+                        'httponly' => ini_get('session.cookie_httponly'),
+                        'samesite' => 'None',
+                    ]);
+				} else {
+					// php <7.3 didn't support samesite attribute so we hack it into the path string
+					setcookie(session_name(), session_id(), ini_get('session.cookie_lifetime'), ini_get('session.cookie_path').';SameSite=None', ini_get('session.cookie_domain'), true, ini_get('session.cookie_httponly'));
+				}
+			]]></add>
+		</operation>
+	</file>
+</modification>
