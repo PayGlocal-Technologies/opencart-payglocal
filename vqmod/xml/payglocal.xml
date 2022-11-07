@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <id>PayGlocal Payment Extension</id>
+    <version>1.0.2</version>
+    <vqmver>PayGlocalOC1.5.x</vqmver>
+    <author>Meetanshi | https://meetanshi.com</author>
+    <file name="admin/controller/sale/order.php">
+        <operation>
+            <search position="after"><![CDATA[$this->data['shipping_country'] = $order_info['shipping_country'];]]></search>
+            <add><![CDATA[
+                $this->data['payglocal_refund'] = $this->config->get('payglocal_refund');
+            ]]></add>
+        </operation>
+    </file>
+    <file name="admin/view/template/sale/order_info.tpl">
+        <operation>
+            <search position="before"><![CDATA[<?php echo $footer; ?>]]></search>
+            <add><![CDATA[
+                <script type="text/javascript"><!--
+                function refund(){
+                    var returnValue = false;
+                    $.ajax({
+                        async: false,
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {'order_id': '<?php echo $order_id;?>'},
+                        url: 'index.php?route=payment/payglocal/refund&token=<?php echo $token;?>&order_id=<?php echo $this->request->get['order_id']; ?>',
+                        success: function (json) {
+                            console.log(json);
+                            $('.success, .warning').remove();
+                            var message = '';
+                            if (json['gid']) {
+                                message += 'GID: ' + json['gid'] + "\n";
+                            }
+
+                            if (json['status']) {
+                                message += 'Status: ' + json['status'] + "\n";
+                            }
+
+                            if (json['status'] == 'SENT_FOR_REFUND') {
+                                $('.box').before('<div class="success" style="display: none;">' + json['message'] + '</div>');
+                                $('.success').fadeIn('slow');
+                                $('textarea[name=\'comment\']').val(message);
+                                returnValue = true;
+                            } 
+
+                            if(json['status'] == 'REQUEST_ERROR'){
+                                $('.box').before('<div class="warning" style="display: none;">' + json['message'] + '</div>');
+                                $('.warning').fadeIn('slow');
+                            }
+                        }
+                    });
+                    return returnValue;
+                }
+                //--></script>
+            ]]></add>
+        </operation>
+        <operation>
+            <search position="after"><![CDATA[$('#button-history').live('click', function() {]]></search>
+            <add><![CDATA[
+                <?php if ($payglocal_refund == 1){?>
+                    var status_id = $('select[name="order_status_id"]').val();
+                    if(status_id == 11){
+                        if (confirm('<?php echo $text_confirm_refund;?>')) {
+                            var retval = refund();
+                            if(!retval){
+                                return false;
+                            }
+                        }else{
+                            return false;
+                        }
+                    }
+                <?php }?>
+            ]]></add>
+        </operation>
+    </file>
+    <file name="system/library/session.php">
+		<operation>
+			<search position="after"><![CDATA[session_start();]]></search>
+			<add><![CDATA[
+				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
+						setcookie(session_name(), session_id(), [
+							'expires'  => ini_get('session.cookie_lifetime'),
+							'path'     => ini_get('session.cookie_path'),
+							'domain'   => ini_get('session.cookie_domain'),
+							'secure'   => true,
+							'httponly' => ini_get('session.cookie_httponly'),
+							'samesite' => 'None',
+						]);
+				} else {
+					// php <7.3 didn't support samesite attribute so we hack it into the path string
+					setcookie(session_name(), session_id(), ini_get('session.cookie_lifetime'), ini_get('session.cookie_path').';SameSite=None', ini_get('session.cookie_domain'), true, ini_get('session.cookie_httponly'));
+				}
+			]]></add>
+		</operation>
+	</file>
+</modification>
